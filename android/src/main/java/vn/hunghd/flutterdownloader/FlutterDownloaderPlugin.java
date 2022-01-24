@@ -25,6 +25,7 @@ import androidx.work.Constraints;
 import androidx.work.Data;
 import androidx.work.NetworkType;
 import androidx.work.OneTimeWorkRequest;
+import androidx.work.OutOfQuotaPolicy;
 import androidx.work.WorkManager;
 import androidx.work.WorkRequest;
 
@@ -41,9 +42,11 @@ public class FlutterDownloaderPlugin implements MethodCallHandler, FlutterPlugin
 
     public static final String SHARED_PREFERENCES_KEY = "vn.hunghd.downloader.pref";
     public static final String CALLBACK_DISPATCHER_HANDLE_KEY = "callback_dispatcher_handle_key";
+    public static BinaryMessenger messenger;
 
     private static FlutterDownloaderPlugin instance;
     private MethodChannel flutterChannel;
+
     private TaskDbHelper dbHelper;
     private TaskDao taskDao;
     private Context context;
@@ -64,6 +67,7 @@ public class FlutterDownloaderPlugin implements MethodCallHandler, FlutterPlugin
             if (flutterChannel != null) {
                 return;
             }
+            FlutterDownloaderPlugin.messenger = messenger;
             this.context = applicationContext;
             flutterChannel = new MethodChannel(messenger, CHANNEL);
             flutterChannel.setMethodCallHandler(this);
@@ -126,6 +130,7 @@ public class FlutterDownloaderPlugin implements MethodCallHandler, FlutterPlugin
                         .setRequiredNetworkType(NetworkType.CONNECTED)
                         .build())
                 .addTag(TAG)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 5, TimeUnit.SECONDS)
                 .setInputData(new Data.Builder()
                         .putString(DownloadWorker.ARG_URL, url)

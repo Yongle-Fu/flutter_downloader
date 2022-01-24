@@ -82,7 +82,7 @@ public class DownloadWorker extends Worker implements MethodChannel.MethodCallHa
 
     private static final AtomicBoolean isolateStarted = new AtomicBoolean(false);
     private static final ArrayDeque<List> isolateQueue = new ArrayDeque<>();
-    private static FlutterEngine backgroundFlutterEngine;
+//    private static FlutterEngine backgroundFlutterEngine;
 
     private final Pattern charsetPattern = Pattern.compile("(?i)\\bcharset=\\s*\"?([^\\s;\"]*)");
     private final Pattern filenameStarPattern = Pattern.compile("(?i)\\bfilename\\*=([^']+)'([^']*)'\"?([^\"]+)\"?");
@@ -107,46 +107,13 @@ public class DownloadWorker extends Worker implements MethodChannel.MethodCallHa
         new Handler(context.getMainLooper()).post(new Runnable() {
             @Override
             public void run() {
-                startBackgroundIsolate(context);
+                startBackgroundIsolate();
             }
         });
     }
 
-    private void startBackgroundIsolate(Context context) {
-        synchronized (isolateStarted) {
-            if (backgroundFlutterEngine == null) {
-                SharedPreferences pref = context.getSharedPreferences(FlutterDownloaderPlugin.SHARED_PREFERENCES_KEY, Context.MODE_PRIVATE);
-                long callbackHandle = pref.getLong(FlutterDownloaderPlugin.CALLBACK_DISPATCHER_HANDLE_KEY, 0);
-
-                String appBundlePath =  FlutterInjector.instance().flutterLoader().findAppBundlePath();;
-                AssetManager assets = context.getAssets();
-
-                // We need to create an instance of `FlutterEngine` before looking up the
-                // callback. If we don't, the callback cache won't be initialized and the
-                // lookup will fail.
-                FlutterCallbackInformation flutterCallback =
-                        FlutterCallbackInformation.lookupCallbackInformation(callbackHandle);
-                if (flutterCallback == null) {
-                    log("Fatal: failed to find callback");
-                    return;
-                }
-
-                backgroundFlutterEngine = new FlutterEngine(context);
-
-                DartExecutor executor = backgroundFlutterEngine.getDartExecutor();
-                DartExecutor.DartCallback dartCallback = new DartExecutor.DartCallback(assets, appBundlePath, flutterCallback);
-                executor.executeDartCallback(dartCallback);
-
-                /// backward compatibility with V1 embedding
-                if (getApplicationContext() instanceof PluginRegistry.PluginRegistrantCallback) {
-                    PluginRegistry.PluginRegistrantCallback pluginRegistrantCallback = (PluginRegistry.PluginRegistrantCallback) getApplicationContext();
-                    pluginRegistrantCallback.registerWith(new ShimPluginRegistry(backgroundFlutterEngine));
-                }
-            }
-        }
-
-        DartExecutor executor = backgroundFlutterEngine.getDartExecutor();
-        backgroundChannel = new MethodChannel(executor, "vn.hunghd/downloader_background");
+    private void startBackgroundIsolate() {
+        backgroundChannel = new MethodChannel(FlutterDownloaderPlugin.messenger, "vn.hunghd/downloader_background");
         backgroundChannel.setMethodCallHandler(this);
     }
 
